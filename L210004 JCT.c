@@ -1,19 +1,13 @@
 
-//Filename: 		Static Lumbar JCT Code
-//Author:   		Caleb Schultz-Stachnik
-//Date:   			2019/8/20
-//File Version:		G
+//Filename: 		Quieter Air Massage Code
+//Author:   		Dylan Klepps
+//Date:   			2021-3-18
+//File Version:		A
 //Company:			Raffel Systems
 //MCU: 				PIC16F1933
 
 //Changelog:
 //REV A: Initial Release
-//REV B: Added all-zone-off -> massage-off feature, improved pin mapping for layout, PRCLOSE -> HOME
-//REV C: Added independent massage + heat timers and timeout conditions
-//REV D: Improved UART signal integrity (added ACK)
-//REV E: MOTOR DIRECTION SPECIFIED FOR KLAUSNER AND SYNERGY
-//REV F: Fix to allow hotswapping HC's, allows UART comm after disconnecting HC from JCT
-//REV G: Fix for timeout -> 30 min, HR+PR not interrupt massage, AB deflate after timeout
 
 
 //Includes
