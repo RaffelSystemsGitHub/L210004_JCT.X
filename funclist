@@ -1,0 +1,13 @@
+_jct_massage_on: CODE, 1579 0 17
+_jct_massage_reset: CODE, 1558 0 14
+_putch: CODE, 1572 0 7
+_wave: CODE, 199 0 761
+_jct_massage_off: CODE, 1547 0 11
+_alternate: CODE, 3067 0 444
+_main: CODE, 998 0 543
+_isr: CODE, 4 0 192
+i1_jct_massage_off: CODE, 1639 0 11
+_pulse: CODE, 3526 0 549
+_getch: CODE, 1541 0 6
+i1_jct_massage_reset: CODE, 1625 0 14
+Total: 2569
