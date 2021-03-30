@@ -3040,11 +3040,11 @@ extern void _delay(unsigned long);
 # 12 "C:\Program Files (x86)\HI-TECH Software\PICC\9.83\include\stdbool.h"
 typedef unsigned char bool;
 
-# 25 "L210004 JCT.c"
+# 17 "L210004 JCT.c"
 asm("\tpsect config,class=CONFIG,delta=2"); asm("\tdw ""0xFFFC & 0xFFE7 & 0xFFFF & 0xFFBF & 0xFF7F & 0xF9FF & 0xFFFF");
 asm("\tpsect config,class=CONFIG,delta=2"); asm("\tdw ""0xFFFF & 0xFDFF & 0xFFFF & 0xDFFF");
 
-# 75
+# 69
 void putch(unsigned char);
 unsigned char getch(void);
 unsigned char getche(void);
@@ -3059,7 +3059,7 @@ putch(unsigned char byte)
 while(!TXIF){
 continue;
 
-# 94
+# 88
 }
 TXREG = byte;
 }
@@ -3071,7 +3071,7 @@ getch() {
 while(!RCIF){
 continue;
 
-# 110
+# 104
 }
 return RCREG;
 }
@@ -3084,25 +3084,17 @@ putch(c = getch());
 return c;
 }
 
-# 195
+# 189
 volatile int w_count = 0;
 volatile int a_count = 0;
 volatile int p_count = 0;
 volatile int z_count = 0;
 
-volatile bool zone0_en = 1;
-volatile bool zone1_en = 1;
-volatile bool zone2_en = 1;
-volatile bool zone3_en = 1;
-volatile bool alt_en = 1;
-volatile bool wav_en = 0;
-volatile bool pul_en = 0;
 volatile bool vent_t = 0;
 volatile bool m_flag = 0;
 
 volatile int time_out = 200;
 volatile int comm_timeout = 0;
-volatile int massage_timeout = 0;
 volatile int heat_timeout = 0;
 volatile int TimerReload = 0;
 volatile int pwm_count = 0;
@@ -3115,11 +3107,16 @@ volatile bool heat_en = 0;
 volatile bool heat_reset = 0;
 volatile bool power = 0;
 volatile bool timer = 0;
+volatile bool pulsePhase = 1;
+volatile char prOpen, prClose, hrOpen, hrClose;
+
+volatile char massageSecTimer = 40;
+volatile char massageCycleTimer;
+volatile char massageCycles;
+volatile char prOpenDelay, prCloseDelay, hrOpenDelay, hrCloseDelay;
 
 
-void wave();
-void alternate();
-void pulse();
+void massage();
 void jct_massage_on();
 void jct_massage_off();
 void jct_massage_reset();
@@ -3135,20 +3132,20 @@ TRISC7 = 1; TRISC6 = 1; SPBRG = ((int)(4000000L/(16UL * 9600) -1)); RCSTA = (0|0
 
 TRISA = 0b01000000;
 
-# 252
+# 243
 ANSELA = 0b00000000;
 
 TRISB = 0b11100001;
 
-# 263
+# 254
 ANSELB = 0b00000000;
 
 TRISC = 0b10111111;
 
-# 277
+# 268
 INTCON = 0b10100000;
 
-# 288
+# 279
 BAUDCON = 0b00000000;
 SPBRGL = 0x0C;
 SPBRGH = 0b00000000;
@@ -3161,7 +3158,9 @@ LATA = 0x00;
 LATB = 0x00;
 LATC = 0x00;
 
+
 while(1){
+
 bool echo = 1;
 do{
 char c;
@@ -3228,13 +3227,14 @@ else if(!vent_t){
 power = 0;
 LATA1 = 0;
 LATA7 = 0;
-LATA0 = 0;
+LUM_HOLD_PIN = 0;
 }
 }
 if(rc == 'A'){
 jct_massage_on();
 m_flag = 1;
-massage_timeout = 20*60*29.5;
+massageCycles = massageCycles;
+
 }
 if(rc == 'B'){
 jct_massage_off();
@@ -3351,9 +3351,9 @@ LATB1 = 0;
 LATB4 = 0;
 LATB2 = 0;
 LATB3 = 0;
-LATA1 = 1;
 LATA7 = 1;
-LATA0 = 1;
+LATA5 = 0;
+LATA1 = 1;
 if(heat_en){
 LATA2 = 0;
 heat_en = 0;
@@ -3372,10 +3372,9 @@ LATB1 = 0;
 LATB4 = 0;
 LATB2 = 0;
 LATB3 = 0;
-power = 0;
-LATA1 = 0;
 LATA7 = 0;
-LATA0 = 1;
+LATA5 = 1;
+LATA1 = 0;
 if(heat_en){
 LATA2 = 0;
 heat_en = 0;
@@ -3392,7 +3391,7 @@ LATB2 = 0;
 LATB3 = 0;
 LATA1 = 0;
 LATA7 = 0;
-LATA0 = 0;
+LATA5 = 0;
 if(heat_reset){
 LATA2 = 1;
 heat_en = 1;
@@ -3400,56 +3399,7 @@ heat_reset = 0;
 }
 }
 
-if(rc == 'L'){
-zone0_en = 1;
-massage_timeout = 20*60*29.5;
-}
-if(rc == 'M'){
-zone0_en = 0;
-massage_timeout = 20*60*29.5;
-}
-if(rc == 'N'){
-zone1_en = 1;
-massage_timeout = 20*60*29.5;
-}
-if(rc == 'O'){
-zone1_en = 0;
-massage_timeout = 20*60*29.5;
-}
-if(rc == 'P'){
-zone2_en = 1;
-massage_timeout = 20*60*29.5;
-}
-if(rc == 'Q'){
-zone2_en = 0;
-massage_timeout = 20*60*29.5;
-}
-if(rc == 'R'){
-zone3_en = 1;
-massage_timeout = 20*60*29.5;
-}
-if(rc == 'S'){
-zone3_en = 0;
-massage_timeout = 20*60*29.5;
-}
-if(rc == 'T'){
-alt_en = 1;
-wav_en = 0;
-pul_en = 0;
-massage_timeout = 20*60*29.5;
-}
-if(rc == 'U'){
-alt_en = 0;
-wav_en = 1;
-pul_en = 0;
-massage_timeout = 20*60*29.5;
-}
-if(rc == 'V'){
-alt_en = 0;
-wav_en = 0;
-pul_en = 1;
-massage_timeout = 20*60*29.5;
-}
+
 if(rc == 'W'){
 heat_en = 1;
 heat_timeout = 20*60*29.5;
@@ -3466,16 +3416,6 @@ if(TMR0IF){
 time_out--;
 if(!time_out){
 time_out = 200;
-if(massage_timeout){
-massage_timeout--;
-if(!massage_timeout){
-power = 0;
-jct_massage_off();
-jct_massage_reset();
-timer = 0;
-vent_t = 1;
-}
-}
 if(heat_timeout){
 heat_timeout--;
 if(!heat_timeout){
@@ -3485,11 +3425,11 @@ timer = 0;
 }
 if(vent_t){
 if(vent_c > 0){
-LATA0 = 1;
+LUM_HOLD_PIN = 1;
 --vent_c;
 }
 else{
-LATA0 = 0;
+LUM_HOLD_PIN = 0;
 vent_c = 200;
 vent_t = 0;
 }
@@ -3502,16 +3442,6 @@ vent_c = 200;
 pwm_count++;
 if(pwm_count >= 100){
 pwm_count = 0;
-}
-if(pwm_count < 75){
-if(power){
-LATA1 = 1;
-}
-}
-else{
-if(power){
-LATA1 = 0;
-}
 }
 
 if(heat_en){
@@ -3535,1764 +3465,205 @@ if(!power){
 jct_massage_reset();
 }
 else{
-if(alt_en){
-alternate();
-
-}
-if(wav_en){
-wave();
-}
-if(pul_en){
-pulse();
-
-}
+massage();
 }
 }
 TMR0IF = 0;
 }
 }
 
-void wave(){
-if(heat_en){
-LATA2 = 1;
+void massage(){
+if(massageSecTimer){
+massageSecTimer--;
+}else{
+massageCycleTimer++;
+if(massageCycleTimer>=120){
+massageCycleTimer = 0;
+if(massageCycles){
+massageCycles--;
+if(!massageCycles){
+power = 0;
+jct_massage_off();
+jct_massage_reset();
+timer = 0;
+vent_t = 1;
 }
-else{
-LATA2 = 0;
 }
-if(zone0_en && !zone1_en && !zone2_en && !zone3_en){
-if(w_count < 100){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
 }
-else if(w_count < 130){
+massageSecTimer = 40;
+}
+if(massageCycleTimer<4){
 LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else{
-w_count = 0;
-}
-}
-else if(!zone0_en && zone1_en && !zone2_en && !zone3_en){
-if(w_count < 100){
-LATA7 = 0;
-LATA0 = 1;
 LATA5 = 1;
-LATA4 = 0;
 LATA3 = 0;
-w_count++;
-}
-else if(w_count < 130){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else{
-w_count = 0;
-}
-}
-else if(!zone0_en && !zone1_en && zone2_en && !zone3_en){
-if(w_count < 100){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
 LATA4 = 1;
-LATA3 = 0;
-w_count++;
-}
-else if(w_count < 130){
+LATA1 = 1;
+}else if(massageCycleTimer<8){
 LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else{
-w_count = 0;
-}
-}
-else if(!zone0_en && !zone1_en && !zone2_en && zone3_en){
-if(w_count < 100){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 1;
-w_count++;
-}
-else if(w_count < 130){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else{
-w_count = 0;
-}
-}
-else if(zone0_en && zone1_en && !zone2_en && !zone3_en){
-if(w_count < 100){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else if(w_count < 200){
-LATA7 = 1;
-LATA0 = 1;
 LATA5 = 1;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else if(w_count < 300){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 1;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else if(w_count < 330){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else{
-w_count = 0;
-}
-}
-else if(zone0_en && !zone1_en && zone2_en && !zone3_en){
-if(w_count < 100){
+LATA3 = 1;
+LATA4 = 1;
+LATA1 = 1;
+}else if(massageCycleTimer<12){
 LATA7 = 1;
-LATA0 = 1;
 LATA5 = 0;
+LATA3 = 1;
 LATA4 = 0;
+LATA1 = 1;
+}else if(massageCycleTimer<16){
+LATA7 = 0;
+LATA5 = 1;
+LATA3 = 1;
+LATA4 = 1;
+LATA1 = 1;
+}else if(massageCycleTimer<24){
+LATA7 = 0;
+LATA5 = 1;
 LATA3 = 0;
-w_count++;
-}
-else if(w_count < 200){
+LATA4 = 1;
+LATA1 = 1;
+}else if(massageCycleTimer<28){
+LATA7 = 0;
+LATA5 = 1;
+LATA3 = 1;
+LATA4 = 1;
+LATA1 = 1;
+}else if(massageCycleTimer<32){
 LATA7 = 1;
-LATA0 = 1;
 LATA5 = 0;
-LATA4 = 1;
-LATA3 = 0;
-w_count++;
-}
-else if(w_count < 300){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 1;
-LATA3 = 0;
-w_count++;
-}
-else if(w_count < 330){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else{
-w_count = 0;
-}
-}
-else if(zone0_en && !zone1_en && !zone2_en && zone3_en){
-if(w_count < 100){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else if(w_count < 200){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
 LATA3 = 1;
-w_count++;
-}
-else if(w_count < 300){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
 LATA4 = 0;
-LATA3 = 1;
-w_count++;
-}
-else if(w_count < 330){
+LATA1 = 1;
+}else if(massageCycleTimer<36){
 LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else{
-w_count = 0;
-}
-}
-else if(!zone0_en && zone1_en && zone2_en && !zone3_en){
-if(w_count < 100){
-LATA7 = 0;
-LATA0 = 1;
 LATA5 = 1;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else if(w_count < 200){
+LATA3 = 1;
+LATA4 = 1;
+LATA1 = 1;
+}else if(massageCycleTimer<40){
 LATA7 = 0;
-LATA0 = 1;
 LATA5 = 1;
+LATA3 = 0;
 LATA4 = 1;
-LATA3 = 0;
-w_count++;
-}
-else if(w_count < 300){
+LATA1 = 1;
+}else if(massageCycleTimer<48){
 LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 1;
-LATA3 = 0;
-w_count++;
-}
-else if(w_count < 330){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else{
-w_count = 0;
-}
-}
-else if(!zone0_en && zone1_en && !zone2_en && zone3_en){
-if(w_count < 100){
-LATA7 = 0;
-LATA0 = 1;
 LATA5 = 1;
-LATA4 = 0;
 LATA3 = 0;
-w_count++;
-}
-else if(w_count < 200){
+LATA4 = 0;
+LATA1 = 0;
+}else if(massageCycleTimer<52){
 LATA7 = 0;
-LATA0 = 1;
+LATA5 = 0;
+LATA3 = 0;
+LATA4 = 1;
+LATA1 = 1;
+}else if(massageCycleTimer<56){
+LATA7 = 0;
 LATA5 = 1;
-LATA4 = 0;
 LATA3 = 1;
-w_count++;
-}
-else if(w_count < 300){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 1;
-w_count++;
-}
-else if(w_count < 330){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else{
-w_count = 0;
-}
-}
-else if(!zone0_en && !zone1_en && zone2_en && zone3_en){
-if(w_count < 100){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
 LATA4 = 1;
-LATA3 = 0;
-w_count++;
-}
-else if(w_count < 200){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 1;
-LATA3 = 1;
-w_count++;
-}
-else if(w_count < 300){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 1;
-w_count++;
-}
-else if(w_count < 330){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else{
-w_count = 0;
-}
-}
-else if(zone0_en && zone1_en && zone2_en && !zone3_en){
-if(w_count < 100){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else if(w_count < 200){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 1;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else if(w_count < 300){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 1;
-LATA4 = 1;
-LATA3 = 0;
-w_count++;
-}
-else if(w_count < 400){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 1;
-LATA4 = 1;
-LATA3 = 0;
-w_count++;
-}
-else if(w_count < 500){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 1;
-LATA3 = 0;
-w_count++;
-}
-else if(w_count < 530){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else{
-w_count = 0;
-}
-}
-else if(zone0_en && zone1_en && !zone2_en && zone3_en){
-if(w_count < 100){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else if(w_count < 200){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 1;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else if(w_count < 300){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 1;
-LATA4 = 0;
-LATA3 = 1;
-w_count++;
-}
-else if(w_count < 400){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 1;
-LATA4 = 0;
-LATA3 = 1;
-w_count++;
-}
-else if(w_count < 500){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 1;
-w_count++;
-}
-else if(w_count < 530){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else{
-w_count = 0;
-}
-}
-else if(zone0_en && !zone1_en && zone2_en && zone3_en){
-if(w_count < 100){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else if(w_count < 200){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 1;
-LATA3 = 0;
-w_count++;
-}
-else if(w_count < 300){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 1;
-LATA3 = 1;
-w_count++;
-}
-else if(w_count < 400){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 1;
-LATA3 = 1;
-w_count++;
-}
-else if(w_count < 500){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 1;
-w_count++;
-}
-else if(w_count < 530){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else{
-w_count = 0;
-}
-}
-else if(!zone0_en && zone1_en && zone2_en && zone3_en){
-if(w_count < 100){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 1;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else if(w_count < 200){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 1;
-LATA4 = 1;
-LATA3 = 0;
-w_count++;
-}
-else if(w_count < 300){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 1;
-LATA4 = 1;
-LATA3 = 1;
-w_count++;
-}
-else if(w_count < 400){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 1;
-LATA3 = 1;
-w_count++;
-}
-else if(w_count < 500){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 1;
-w_count++;
-}
-else if(w_count < 530){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else{
-w_count = 0;
-}
-}
-else if(zone0_en && zone1_en && zone2_en && zone3_en){
-if(w_count < 100){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else if(w_count < 200){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 1;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else if(w_count < 300){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 1;
-LATA4 = 1;
-LATA3 = 0;
-w_count++;
-}
-else if(w_count < 400){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 1;
-LATA4 = 1;
-LATA3 = 1;
-w_count++;
-}
-else if(w_count < 500){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 1;
-LATA4 = 1;
-LATA3 = 1;
-w_count++;
-}
-else if(w_count < 600){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 1;
-LATA3 = 1;
-w_count++;
-}
-else if(w_count < 700){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 1;
-w_count++;
-}
-else if(w_count < 730){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-w_count++;
-}
-else{
-w_count = 0;
-}
-}
-else{
-LATA7 = 0;
-LATA0 = 0;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-}
-}
+LATA1 = 1;
 
-void pulse(){
-if(heat_en){
-LATA2 = 1;
-}
-else{
-LATA2 = 0;
-}
-if(zone0_en && !zone1_en && !zone2_en && !zone3_en){
-if(z_count < 10){
-if(p_count < 20){
-LATA7 = 1;
-LATA0 = 1;
+}else if(massageCycleTimer<62){
+LATA7 = 0;
 LATA5 = 0;
+LATA1 = 1;
+if(massageSecTimer<15){
 LATA4 = 0;
 LATA3 = 0;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else{
-z_count = 0;
-}
-}
-else if(!zone0_en && zone1_en && !zone2_en && !zone3_en){
-if(z_count < 10){
-if(p_count < 20){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 1;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else{
-z_count = 0;
-}
-}
-else if(!zone0_en && !zone1_en && zone2_en && !zone3_en){
-if(z_count < 10){
-if(p_count < 20){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 1;
-LATA3 = 0;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else{
-z_count = 0;
-}
-}
-else if(!zone0_en && !zone1_en && !zone2_en && zone3_en){
-if(z_count < 10){
-if(p_count < 20){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 1;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else{
-z_count = 0;
-}
-}
-else if(zone0_en && zone1_en && !zone2_en && !zone3_en){
-if(z_count < 10){
-if(p_count < 20){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else if(z_count < 20){
-if(p_count < 20){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 1;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else{
-z_count = 0;
-}
-}
-else if(zone0_en && !zone1_en && zone2_en && !zone3_en){
-if(z_count < 10){
-if(p_count < 20){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else if(z_count < 20){
-if(p_count < 20){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 1;
-LATA3 = 0;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else{
-z_count = 0;
-}
-}
-else if(zone0_en && !zone1_en && !zone2_en && zone3_en){
-if(z_count < 10){
-if(p_count < 20){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else if(z_count < 20){
-if(p_count < 20){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 1;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else{
-z_count = 0;
-}
-}
-else if(!zone0_en && zone1_en && zone2_en && !zone3_en){
-if(z_count < 10){
-if(p_count < 20){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 1;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else if(z_count < 20){
-if(p_count < 20){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 1;
-LATA3 = 0;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else{
-z_count = 0;
-}
-}
-else if(!zone0_en && zone1_en && !zone2_en && zone3_en){
-if(z_count < 10){
-if(p_count < 20){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 1;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else if(z_count < 20){
-if(p_count < 20){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 1;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else{
-z_count = 0;
-}
-}
-else if(!zone0_en && !zone1_en && zone2_en && zone3_en){
-if(z_count < 10){
-if(p_count < 20){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 1;
-LATA3 = 0;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else if(z_count < 20){
-if(p_count < 20){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 1;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else{
-z_count = 0;
-}
-}
-else if(zone0_en && zone1_en && zone2_en && !zone3_en){
-if(z_count < 10){
-if(p_count < 20){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else if(z_count < 20){
-if(p_count < 20){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 1;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else if(z_count < 30){
-if(p_count < 20){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 1;
-LATA3 = 0;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else{
-z_count = 0;
-}
-}
-else if(zone0_en && zone1_en && !zone2_en && zone3_en){
-if(z_count < 10){
-if(p_count < 20){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else if(z_count < 20){
-if(p_count < 20){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 1;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else if(z_count < 30){
-if(p_count < 20){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 1;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else{
-z_count = 0;
-}
-}
-else if(zone0_en && !zone1_en && zone2_en && zone3_en){
-if(z_count < 10){
-if(p_count < 20){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else if(z_count < 20){
-if(p_count < 20){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 1;
-LATA3 = 0;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else if(z_count < 30){
-if(p_count < 20){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 1;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else{
-z_count = 0;
-}
-}
-else if(!zone0_en && zone1_en && zone2_en && zone3_en){
-if(z_count < 10){
-if(p_count < 20){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 1;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else if(z_count < 20){
-if(p_count < 20){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 1;
-LATA3 = 0;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else if(z_count < 30){
-if(p_count < 20){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 1;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else{
-z_count = 0;
-}
-}
-else if(zone0_en && zone1_en && zone2_en && zone3_en){
-if(z_count < 10){
-if(p_count < 20){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else if(z_count < 20){
-if(p_count < 20){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 1;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else if(z_count < 30){
-if(p_count < 20){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 1;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else if(z_count < 40){
-if(p_count < 20){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 1;
-p_count++;
-}
-else if(p_count < 30){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-p_count++;
-}
-else{
-p_count = 0;
-z_count++;
-}
-}
-else{
-z_count = 0;
-}
-}
-else{
-LATA7 = 0;
-LATA0 = 0;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-}
-
-}
-
-void alternate(){
-if(heat_en){
-LATA2 = 1;
-}
-else{
-LATA2 = 0;
-}
-if(zone0_en && zone1_en && zone2_en && zone3_en){
-if(a_count < 100){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 1;
-LATA4 = 0;
-LATA3 = 0;
-a_count++;
-}
-else if(a_count < 200){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
+}else{
 LATA4 = 1;
 LATA3 = 1;
-a_count++;
 }
-else{
-a_count = 0;
-}
-}
-else if(zone0_en && zone1_en && zone2_en && !zone3_en){
-if(a_count < 100){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 1;
-LATA4 = 0;
-LATA3 = 0;
-a_count++;
-}
-else if(a_count < 200){
+}else if(massageCycleTimer<66){
 LATA7 = 0;
-LATA0 = 1;
 LATA5 = 0;
-LATA4 = 1;
-LATA3 = 0;
-a_count++;
-}
-else{
-a_count = 0;
-}
-}
-else if(zone0_en && zone1_en && zone3_en && !zone2_en){
-if(a_count < 100){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 1;
-LATA4 = 0;
-LATA3 = 0;
-a_count++;
-}
-else if(a_count < 200){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
 LATA3 = 1;
-a_count++;
-}
-else{
-a_count = 0;
-}
-}
-else if(zone1_en && zone2_en && zone3_en && !zone0_en){
-if(a_count < 100){
+LATA4 = 1;
+LATA1 = 1;
+}else if (massageCycleTimer<70){
 LATA7 = 0;
-LATA0 = 1;
-LATA5 = 1;
+LATA5 = 0;
+LATA1 = 1;
+if(massageSecTimer<15){
 LATA4 = 0;
 LATA3 = 0;
-a_count++;
-}
-else if(a_count < 200){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
+}else{
 LATA4 = 1;
 LATA3 = 1;
-a_count++;
 }
-else{
-a_count = 0;
-}
-}
-else if(zone0_en && zone2_en && zone3_en && !zone1_en){
-if(a_count < 100){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-a_count++;
-}
-else if(a_count < 200){
+}else if(massageCycleTimer<74){
 LATA7 = 0;
-LATA0 = 1;
 LATA5 = 0;
-LATA4 = 1;
 LATA3 = 1;
-a_count++;
-}
-else{
-a_count = 0;
-}
-}
-else if(zone0_en && zone1_en && !zone2_en && !zone3_en){
-if(a_count < 100){
-LATA7 = 1;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-a_count++;
-}
-else if(a_count < 200){
+LATA4 = 1;
+LATA1 = 1;
+}else if(massageCycleTimer<80){
 LATA7 = 0;
-LATA0 = 1;
+LATA5 = 0;
+LATA3 = 0;
+LATA4 = 0;
+LATA1 = 0;
+}else if(massageCycleTimer<88){
+LATA7 = 1;
+LATA5 = 0;
+LATA3 = 0;
+LATA4 = 0;
+LATA1 = 1;
+}else if(massageCycleTimer<92){
+LATA7 = 1;
+LATA5 = 0;
+LATA3 = 1;
+LATA4 = 0;
+LATA1 = 1;
+}else if(massageCycleTimer<98){
+LATA1 = 1;
+LATA4 = 0;
+if(massageSecTimer<15){
+LATA7 = 0;
 LATA5 = 1;
-LATA4 = 0;
 LATA3 = 0;
-a_count++;
-}
-else{
-a_count = 0;
-}
-}
-else if(zone0_en && zone2_en && !zone1_en && !zone3_en){
-if(a_count < 100){
+}else{
 LATA7 = 1;
-LATA0 = 1;
 LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-a_count++;
+LATA3 = 1;
 }
-else if(a_count < 200){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 1;
-LATA3 = 0;
-a_count++;
-}
-else{
-a_count = 0;
-}
-}
-else if(zone0_en && zone3_en && !zone1_en && !zone2_en){
-if(a_count < 100){
+}else if(massageCycleTimer<102){
 LATA7 = 1;
-LATA0 = 1;
 LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-a_count++;
-}
-else if(a_count < 200){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
 LATA3 = 1;
-a_count++;
-}
-else{
-a_count = 0;
-}
-}
-else if(zone1_en && zone2_en && !zone0_en && !zone3_en){
-if(a_count < 100){
+LATA4 = 0;
+LATA1 = 1;
+}else if(massageCycleTimer<106){
+LATA1 = 1;
+LATA4 = 0;
+if(massageSecTimer<15){
 LATA7 = 0;
-LATA0 = 1;
 LATA5 = 1;
-LATA4 = 0;
 LATA3 = 0;
-a_count++;
-}
-else if(a_count < 200){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 1;
-LATA3 = 0;
-a_count++;
-}
-else{
-a_count = 0;
-}
-}
-else if(zone1_en && zone3_en && !zone0_en && !zone2_en){
-if(a_count < 100){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 1;
-LATA4 = 0;
-LATA3 = 0;
-a_count++;
-}
-else if(a_count < 200){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 1;
-a_count++;
-}
-else{
-a_count = 0;
-}
-}
-else if(zone2_en && zone3_en && !zone0_en && !zone1_en){
-if(a_count < 100){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 1;
-LATA3 = 0;
-a_count++;
-}
-else if(a_count < 200){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 1;
-a_count++;
-}
-else{
-a_count = 0;
-}
-}
-else if(zone0_en && !zone1_en && !zone2_en && !zone3_en){
-if(a_count < 100){
+}else{
 LATA7 = 1;
-LATA0 = 1;
 LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-a_count++;
-}
-else if(a_count < 130){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-a_count++;
-}
-else{
-a_count = 0;
-}
-}
-else if(zone1_en && !zone0_en && !zone2_en && !zone3_en){
-if(a_count < 100){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 1;
-LATA4 = 0;
-LATA3 = 0;
-a_count++;
-}
-else if(a_count < 130){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-a_count++;
-}
-else{
-a_count = 0;
-}
-}
-else if(zone2_en && !zone0_en && !zone1_en && !zone3_en){
-if(a_count < 100){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 1;
-LATA3 = 0;
-a_count++;
-}
-else if(a_count < 130){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
-LATA3 = 0;
-a_count++;
-}
-else{
-a_count = 0;
-}
-}
-else if(zone3_en && !zone0_en && !zone1_en && !zone2_en){
-if(a_count < 100){
-LATA7 = 0;
-LATA0 = 1;
-LATA5 = 0;
-LATA4 = 0;
 LATA3 = 1;
-a_count++;
 }
-else if(a_count < 130){
-LATA7 = 0;
-LATA0 = 1;
+}else if(massageCycleTimer<111){
+LATA7 = 1;
 LATA5 = 0;
+LATA3 = 1;
 LATA4 = 0;
-LATA3 = 0;
-a_count++;
-}
-else{
-a_count = 0;
-}
-}
-
-else{
+LATA1 = 1;
+}else{
 LATA7 = 0;
-LATA0 = 0;
-LATA5 = 0;
-LATA4 = 0;
+LATA5 = 1;
 LATA3 = 0;
+LATA4 = 0;
+LATA1 = 0;
 }
-
 }
 
 void jct_massage_on(){
 power = 1;
-zone0_en = 1;
-zone1_en = 1;
-zone2_en = 1;
-zone3_en = 1;
-alt_en = 1;
-wav_en = 0;
-pul_en = 0;
 m_flag = 1;
 }
 
@@ -5300,21 +3671,15 @@ void jct_massage_off(){
 power = 0;
 m_flag = 0;
 LATA1 = 0;
-LATA0 = 0;
 LATA7 = 0;
-LATA0 = 0;
 LATA5 = 0;
 LATA4 = 0;
 LATA3 = 0;
+massageCycleTimer = 0;
+massageSecTimer = 40;
 }
 
 void jct_massage_reset(){
-zone0_en = 0;
-zone1_en = 0;
-zone2_en = 0;
-zone3_en = 0;
-a_count = 0;
-p_count = 0;
-w_count = 0;
-z_count = 0;
+massageCycleTimer = 0;
+massageSecTimer = 40;
 }

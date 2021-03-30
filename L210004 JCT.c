@@ -6,8 +6,6 @@
 //Company:			Raffel Systems
 //MCU: 				PIC16F1933
 
-//Changelog:
-//REV A: Initial Release
 
 
 //Includes
@@ -37,6 +35,8 @@ __CONFIG(WRT_OFF & STVREN_OFF & BORV_LO  & LVP_OFF);
 
 #define DIVIDER ((int)(FOSC/(16UL * BAUD) -1))
 #define HIGH_SPEED 1
+
+
 
 #if NINE == 1
 #define NINE_BITS 0x40
@@ -153,12 +153,12 @@ getche(void)
 #define		PR_OPEN_PIN		LATB4
 #define		PR_CLOSE_PIN	LATB3
 
-#define		ZONE0_OUT		LATA7
-#define		ZONE1_OUT		LATA5
-#define		ZONE2_OUT		LATA4
-#define		ZONE3_OUT		LATA3
-#define		LUM_HOLD_PIN	LATA0
+#define		LUMBAR_INFLATE	LATA7   
+#define		LUMBAR_DEFLATE	LATA5
+#define		ZONE0_OUT		LATA3
+#define		ZONE1_OUT		LATA4
 #define 	HEAT_OUT		LATA2
+
 
 
 //Timer setup for 0.05 seconds
@@ -176,14 +176,14 @@ getche(void)
 #define		Heat_TimeOut	36000							//30 min => 30*60/.05
 #define		Massage_TimeOut	24000							//20 min => 20*60/.05
 #define 	pwmPeriod 		100
-#define		WAVE			0
-#define		ALTERNATE		1
-#define		PULSE			2
 #define     VENT_TIME       200
 #define     LONG_TOUT       20*60*29.5
 #define     SHORT_TOUT      20*60*2
 #define     ARR_LENGTH      5
 #define     NELEMS(x)       (sizeof(x)/sizeof((x)[0]))
+#define     MASSAGE_SEC     40
+#define     ACTUATOR_CHANGE_TIME    10
+#define     MASSAGE_CYCLES  10
 
 //Global Variables
 volatile int w_count = 0;									//wave counter, only used for wave func timing
@@ -191,23 +191,15 @@ volatile int a_count = 0;									//alternate counter, only used for alternate f
 volatile int p_count = 0;									//pulse counter, only used for pulse func timing
 volatile int z_count = 0;									//pulse counter, only used for pulse zone switching
 
-volatile bool zone0_en = true;	//init with all on so pump operates correctly
-volatile bool zone1_en = true;
-volatile bool zone2_en = true;
-volatile bool zone3_en = true;
-volatile bool alt_en   = true;	//massage func select needs initial value
-volatile bool wav_en   = false;
-volatile bool pul_en   = false;
-volatile bool vent_t   = false;
+volatile bool isVenting   = false;
 volatile bool m_flag   = false;
 
 volatile int  time_out = SEC_RELOAD;
 volatile int  comm_timeout = 0;
-volatile int  massage_timeout = 0;
 volatile int  heat_timeout = 0;
 volatile int  TimerReload = 0;
 volatile int  pwm_count = 0;
-volatile int  vent_c = VENT_TIME;
+volatile int  vent_time = VENT_TIME;
 volatile char rc_error;
 volatile char rc;
 volatile char last_rc[ARR_LENGTH] = {0};
@@ -216,11 +208,16 @@ volatile bool heat_en = false;
 volatile bool heat_reset = false;
 volatile bool power = false;
 volatile bool timer = false;
+volatile bool pulsePhase = true;
+volatile char prOpen, prClose, hrOpen, hrClose;
+
+volatile char massageSecTimer = MASSAGE_SEC;
+volatile char massageCycleTimer;
+volatile char massageCycles;
+volatile char prOpenDelay, prCloseDelay, hrOpenDelay, hrCloseDelay;
 
 //Function Prototypes
-void wave();
-void alternate();
-void pulse();
+void massage();
 void jct_massage_on();
 void jct_massage_off();
 void jct_massage_reset();
@@ -290,8 +287,10 @@ void main(void){
 	LATA = 0x00;	//clear all port outputs
 	LATB = 0x00;
 	LATC = 0x00;
-	
+
+    
 	while(1){
+        
         bool echo = true;
         do{
             char c;
@@ -336,7 +335,7 @@ void main(void){
 		if(rc){	//set timer if there was a transmission
 			timer = 1;
             if(rc != ACT_OFF){
-                vent_t = false;
+                isVenting = false;
             }
 		}
 		if(OERR || FERR){
@@ -354,24 +353,24 @@ void main(void){
             if(power){
                 
             }
-            else if(!vent_t){
+            else if(!isVenting){
                 power = false;
                 MOTOR_PIN = 0;
-                ZONE0_OUT = 0;
-                LUM_HOLD_PIN = 0;
+                LUMBAR_INFLATE = 0;
             }
         }
 		if(rc == MASSAGE_ON){
 			jct_massage_on();
             m_flag = true;
-            massage_timeout = LONG_TOUT;
+            massageCycles = massageCycles;
+            //massage_timeout = LONG_TOUT;
 		}
 		if(rc == MASSAGE_OFF){
 			jct_massage_off();
             jct_massage_reset();
             heat_en = false;
             HEAT_OUT = 0;
-            vent_t = true;
+            isVenting = true;
 		}
 		if(rc == PR_OPEN){
             if(heat_en){
@@ -388,7 +387,7 @@ void main(void){
 			PR_OPEN_PIN = 1;
             if(!m_flag){
                 MOTOR_PIN = 0;
-                ZONE0_OUT = 0;
+                LUMBAR_INFLATE = 0;
                 //vent_t = true;
                 
             }
@@ -404,7 +403,7 @@ void main(void){
 			}
             if(!m_flag){
                 MOTOR_PIN = 0;
-                ZONE0_OUT = 0;
+                LUMBAR_INFLATE = 0;
                 //vent_t = true;
             }
             HR_OPEN_PIN = 0;
@@ -434,7 +433,7 @@ void main(void){
 			}
             if(!m_flag){
                 MOTOR_PIN = 0;
-                ZONE0_OUT = 0;
+                LUMBAR_INFLATE = 0;
                 //vent_t = true;
             }
             HR_OPEN_PIN = 1;
@@ -453,7 +452,7 @@ void main(void){
 			}
             if(!m_flag){
                 MOTOR_PIN = 0;
-                ZONE0_OUT = 0;
+                LUMBAR_INFLATE = 0;
                 //vent_t = true;
             }
             HR_OPEN_PIN = 0;
@@ -480,10 +479,10 @@ void main(void){
                 HR_OPEN_PIN = 0;
                 PR_OPEN_PIN = 0;
                 HR_CLOSE_PIN = 0;
-                PR_CLOSE_PIN = 0;                
+                PR_CLOSE_PIN = 0;  
+				LUMBAR_INFLATE = 1;
+                LUMBAR_DEFLATE = 0;              
 				MOTOR_PIN = 1;
-				ZONE0_OUT = 1;
-				LUM_HOLD_PIN = 1;
                 if(heat_en){
                     HEAT_OUT = 0;
                     heat_en = false;
@@ -502,10 +501,9 @@ void main(void){
                 PR_OPEN_PIN = 0;
                 HR_CLOSE_PIN = 0;
                 PR_CLOSE_PIN = 0;
-				power = false;
+				LUMBAR_INFLATE = 0;
+                LUMBAR_DEFLATE = 1;
 				MOTOR_PIN = 0;
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
                 if(heat_en){
                     HEAT_OUT = 0;
                     heat_en = false;
@@ -521,8 +519,8 @@ void main(void){
             HR_CLOSE_PIN = 0;
             PR_CLOSE_PIN = 0;
 			MOTOR_PIN = 0;
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 0;
+			LUMBAR_INFLATE = 0;
+            LUMBAR_DEFLATE = 0;
             if(heat_reset){
                 HEAT_OUT = 1;
                 heat_en = true;
@@ -530,56 +528,7 @@ void main(void){
             }
 		}
 
-		if(rc == Z0_ON){
-			zone0_en = true;
-            massage_timeout = LONG_TOUT;
-		}
-		if(rc == Z0_OFF){
-			zone0_en = false;
-            massage_timeout = LONG_TOUT;
-		}
-		if(rc == Z1_ON){
-			zone1_en = true;
-            massage_timeout = LONG_TOUT;
-		}
-		if(rc == Z1_OFF){
-			zone1_en = false;
-            massage_timeout = LONG_TOUT;
-		}
-		if(rc == Z2_ON){
-			zone2_en = true;
-            massage_timeout = LONG_TOUT;
-		}
-		if(rc == Z2_OFF){
-			zone2_en = false;
-            massage_timeout = LONG_TOUT;
-		}
-		if(rc == Z3_ON){
-			zone3_en = true;
-            massage_timeout = LONG_TOUT;
-		}
-		if(rc == Z3_OFF){
-			zone3_en = false;
-            massage_timeout = LONG_TOUT;
-		}
-		if(rc == M_ALTERNATE){
-			alt_en = true;
-			wav_en = false;
-			pul_en = false;
-            massage_timeout = LONG_TOUT;
-		}
-		if(rc == M_WAVE){
-			alt_en = false;
-			wav_en = true;
-			pul_en = false;
-            massage_timeout = LONG_TOUT;
-		}
-		if(rc == M_PULSE){
-			alt_en = false;
-			wav_en = false;
-			pul_en = true;
-            massage_timeout = LONG_TOUT;
-		}
+
 		if(rc == HEAT_ON){
 			heat_en = true;
             heat_timeout = LONG_TOUT;
@@ -596,16 +545,6 @@ static void interrupt isr(void){
 		time_out--;
 		if(!time_out){                  //timeout timing handling
 			time_out = SEC_RELOAD;
-			if(massage_timeout){
-				massage_timeout--;
-				if(!massage_timeout){ 	//turn off massage and heat after 20 min of no communication
-					power = false;
-                    jct_massage_off();
-					jct_massage_reset();
-					timer		= 0;
-                    vent_t = true;
-				}
-			}
             if(heat_timeout){
                 heat_timeout--;
                 if(!heat_timeout){
@@ -613,35 +552,25 @@ static void interrupt isr(void){
                     timer = 0;
                 }
             }
-            if(vent_t){
-                if(vent_c > 0){
-                    LUM_HOLD_PIN = 1;
-                    --vent_c;
+            if(isVenting){
+                if(vent_time){
+                    LUMBAR_DEFLATE = 1;
+                    --vent_time;
                 }
                 else{
-                    LUM_HOLD_PIN = 0;
-                    vent_c = VENT_TIME;
-                    vent_t = false;
+                    LUMBAR_DEFLATE = 0;
+                    vent_time = VENT_TIME;
+                    isVenting = false;
                 }
             }
             else{
-                vent_c = VENT_TIME;
+                vent_time = VENT_TIME;
             }
 		}		
 		
 		pwm_count++;
 		if(pwm_count >= pwmPeriod){
 			pwm_count = 0;
-		}
-		if(pwm_count < 75){
-			if(power){
-				MOTOR_PIN = 1;
-			}
-		}
-		else{
-			if(power){
-				MOTOR_PIN = 0;
-			}
 		}
 
 		if(heat_en){
@@ -665,1764 +594,205 @@ static void interrupt isr(void){
 				jct_massage_reset();
 			}
 			else{
-				if(alt_en){
-					alternate();    //internal global counter controls air solenoids
-                    //wave();
-				}
-				if(wav_en){
-					wave();
-				}
-				if(pul_en){
-					pulse();
-                    //wave();
-				}				
+                massage();				
 			}	
 		}
 		TMR0IF = 0;					//clear timer0 flag
 	}
 }
 
-void wave(){
-    if(heat_en){
-        HEAT_OUT = 1;
+void massage(){
+    if(massageSecTimer){
+        massageSecTimer--;  // count down until the end of a second
+    }else{
+        massageCycleTimer++; //massage modes change based on time
+        if(massageCycleTimer>=120){ // complete massage cycle takes 2 minutes
+            massageCycleTimer = 0;  //reset after 2 minutes
+            if(massageCycles){      //10 massage cycles of 2 minutes 
+				massageCycles--;
+				if(!massageCycles){ 	//turn off massage and heat after 20 min of no communication
+					power = false;
+                    jct_massage_off();
+					jct_massage_reset();
+					timer = 0;
+                    isVenting = true;
+				}
+			}
+        }
+        massageSecTimer = MASSAGE_SEC;
     }
-    else{
-        HEAT_OUT = 0;
+    if(massageCycleTimer<4){   
+        LUMBAR_INFLATE = 0;
+        LUMBAR_DEFLATE = 1;
+        ZONE0_OUT = 0;
+        ZONE1_OUT = 1;
+        MOTOR_PIN = 1;
+    }else if(massageCycleTimer<8){  
+        LUMBAR_INFLATE = 0;
+        LUMBAR_DEFLATE = 1;
+        ZONE0_OUT = 1;
+        ZONE1_OUT = 1;
+        MOTOR_PIN = 1;
+    }else if(massageCycleTimer<12){ 
+        LUMBAR_INFLATE = 1;
+        LUMBAR_DEFLATE = 0;
+        ZONE0_OUT = 1;
+        ZONE1_OUT = 0;
+        MOTOR_PIN = 1;
+    }else if(massageCycleTimer<16){
+        LUMBAR_INFLATE = 0;
+        LUMBAR_DEFLATE = 1;
+        ZONE0_OUT = 1;
+        ZONE1_OUT = 1;
+        MOTOR_PIN = 1;
+    }else if(massageCycleTimer<24){
+        LUMBAR_INFLATE = 0;
+        LUMBAR_DEFLATE = 1;
+        ZONE0_OUT = 0;
+        ZONE1_OUT = 1;
+        MOTOR_PIN = 1;
+    }else if(massageCycleTimer<28){
+        LUMBAR_INFLATE = 0;
+        LUMBAR_DEFLATE = 1;
+        ZONE0_OUT = 1;
+        ZONE1_OUT = 1;
+        MOTOR_PIN = 1;
+    }else if(massageCycleTimer<32){
+        LUMBAR_INFLATE = 1;
+        LUMBAR_DEFLATE = 0;
+        ZONE0_OUT = 1;
+        ZONE1_OUT = 0;
+        MOTOR_PIN = 1;
+    }else if(massageCycleTimer<36){
+        LUMBAR_INFLATE = 0;
+        LUMBAR_DEFLATE = 1;
+        ZONE0_OUT = 1;
+        ZONE1_OUT = 1;
+        MOTOR_PIN = 1;
+    }else if(massageCycleTimer<40){
+        LUMBAR_INFLATE = 0;
+        LUMBAR_DEFLATE = 1;
+        ZONE0_OUT = 0;
+        ZONE1_OUT = 1;
+        MOTOR_PIN = 1;
+    }else if(massageCycleTimer<48){
+        LUMBAR_INFLATE = 0;
+        LUMBAR_DEFLATE = 1;
+        ZONE0_OUT = 0;
+        ZONE1_OUT = 0;
+        MOTOR_PIN = 0;
+    }else if(massageCycleTimer<52){
+        LUMBAR_INFLATE = 0;
+        LUMBAR_DEFLATE = 0;
+        ZONE0_OUT = 0;
+        ZONE1_OUT = 1;
+        MOTOR_PIN = 1;
+    }else if(massageCycleTimer<56){
+        LUMBAR_INFLATE = 0;
+        LUMBAR_DEFLATE = 1;
+        ZONE0_OUT = 1;
+        ZONE1_OUT = 1;
+        MOTOR_PIN = 1;
+        
+    }else if(massageCycleTimer<62){
+        LUMBAR_INFLATE = 0;
+        LUMBAR_DEFLATE = 0;
+        MOTOR_PIN = 1;
+        if(massageSecTimer<15){
+            ZONE1_OUT = 0;
+            ZONE0_OUT = 0;
+        }else{
+            ZONE1_OUT = 1;
+            ZONE0_OUT = 1;
+        }
+    }else if(massageCycleTimer<66){
+        LUMBAR_INFLATE = 0;
+        LUMBAR_DEFLATE = 0;
+        ZONE0_OUT = 1;
+        ZONE1_OUT = 1;
+        MOTOR_PIN = 1;
+    }else if (massageCycleTimer<70){
+        LUMBAR_INFLATE = 0;
+        LUMBAR_DEFLATE = 0;
+        MOTOR_PIN = 1;
+        if(massageSecTimer<15){
+            ZONE1_OUT = 0;
+            ZONE0_OUT = 0;
+        }else{
+            ZONE1_OUT = 1;
+            ZONE0_OUT = 1;
+        }
+    }else if(massageCycleTimer<74){
+        LUMBAR_INFLATE = 0;
+        LUMBAR_DEFLATE = 0;
+        ZONE0_OUT = 1;
+        ZONE1_OUT = 1;
+        MOTOR_PIN = 1;
+    }else if(massageCycleTimer<80){
+        LUMBAR_INFLATE = 0;
+        LUMBAR_DEFLATE = 0;
+        ZONE0_OUT = 0;
+        ZONE1_OUT = 0;
+        MOTOR_PIN = 0;
+    }else if(massageCycleTimer<88){
+        LUMBAR_INFLATE = 1;
+        LUMBAR_DEFLATE = 0;
+        ZONE0_OUT = 0;
+        ZONE1_OUT = 0;
+        MOTOR_PIN = 1;
+    }else if(massageCycleTimer<92){
+        LUMBAR_INFLATE = 1;
+        LUMBAR_DEFLATE = 0;
+        ZONE0_OUT = 1;
+        ZONE1_OUT = 0;
+        MOTOR_PIN = 1;
+    }else if(massageCycleTimer<98){
+        MOTOR_PIN = 1;
+        ZONE1_OUT = 0;
+        if(massageSecTimer<15){
+            LUMBAR_INFLATE = 0;
+            LUMBAR_DEFLATE = 1;
+            ZONE0_OUT = 0;
+        }else{
+            LUMBAR_INFLATE = 1;
+            LUMBAR_DEFLATE = 0;
+            ZONE0_OUT = 1;
+        }
+    }else if(massageCycleTimer<102){
+        LUMBAR_INFLATE = 1;
+        LUMBAR_DEFLATE = 0;
+        ZONE0_OUT = 1;
+        ZONE1_OUT = 0;
+        MOTOR_PIN = 1;
+    }else if(massageCycleTimer<106){
+        MOTOR_PIN = 1;
+        ZONE1_OUT = 0;
+        if(massageSecTimer<15){
+            LUMBAR_INFLATE = 0;
+            LUMBAR_DEFLATE = 1;
+            ZONE0_OUT = 0;
+        }else{
+            LUMBAR_INFLATE = 1;
+            LUMBAR_DEFLATE = 0;
+            ZONE0_OUT = 1;
+        }
+    }else if(massageCycleTimer<111){
+        LUMBAR_INFLATE = 1;
+        LUMBAR_DEFLATE = 0;
+        ZONE0_OUT = 1;
+        ZONE1_OUT = 0;
+        MOTOR_PIN = 1;
+    }else{
+        LUMBAR_INFLATE = 0;
+        LUMBAR_DEFLATE = 1;
+        ZONE0_OUT = 0;
+        ZONE1_OUT = 0;
+        MOTOR_PIN = 0;
     }
-	if(zone0_en && !zone1_en && !zone2_en && !zone3_en){
-		if(w_count < 100){
-			ZONE0_OUT = 1;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 130){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else{
-			w_count = 0;
-		}
-	}
-	else if(!zone0_en && zone1_en && !zone2_en && !zone3_en){
-		if(w_count < 100){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 1;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 130){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else{
-			w_count = 0;
-		}
-	}
-	else if(!zone0_en && !zone1_en && zone2_en && !zone3_en){
-		if(w_count < 100){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 1;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 130){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else{
-			w_count = 0;
-		}
-	}
-	else if(!zone0_en && !zone1_en && !zone2_en && zone3_en){
-		if(w_count < 100){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 1;
-			w_count++;
-		}
-		else if(w_count < 130){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else{
-			w_count = 0;
-		}
-	}
-	else if(zone0_en && zone1_en && !zone2_en && !zone3_en){
-		if(w_count < 100){
-			ZONE0_OUT = 1;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 200){
-			ZONE0_OUT = 1;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 1;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 300){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 1;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 330){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else{
-			w_count = 0;
-		}
-	}
-	else if(zone0_en && !zone1_en && zone2_en && !zone3_en){
-		if(w_count < 100){
-			ZONE0_OUT = 1;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 200){
-			ZONE0_OUT = 1;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 1;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 300){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 1;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 330){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else{
-			w_count = 0;
-		}
-	}	
-	else if(zone0_en && !zone1_en && !zone2_en && zone3_en){
-		if(w_count < 100){
-			ZONE0_OUT = 1;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 200){
-			ZONE0_OUT = 1;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 1;
-			w_count++;
-		}
-		else if(w_count < 300){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 1;
-			w_count++;
-		}
-		else if(w_count < 330){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else{
-			w_count = 0;
-		}
-	}
-	else if(!zone0_en && zone1_en && zone2_en && !zone3_en){
-		if(w_count < 100){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 1;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 200){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 1;
-			ZONE2_OUT = 1;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 300){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 1;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 330){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else{
-			w_count = 0;
-		}
-	}
-	else if(!zone0_en && zone1_en && !zone2_en && zone3_en){
-		if(w_count < 100){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 1;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 200){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 1;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 1;
-			w_count++;
-		}
-		else if(w_count < 300){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 1;
-			w_count++;
-		}
-		else if(w_count < 330){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else{
-			w_count = 0;
-		}
-	}
-	else if(!zone0_en && !zone1_en && zone2_en && zone3_en){
-		if(w_count < 100){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 1;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 200){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 1;
-			ZONE3_OUT = 1;
-			w_count++;
-		}
-		else if(w_count < 300){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 1;
-			w_count++;
-		}
-		else if(w_count < 330){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else{
-			w_count = 0;
-		}
-	}
-	else if(zone0_en && zone1_en && zone2_en && !zone3_en){
-		if(w_count < 100){
-			ZONE0_OUT = 1;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 200){
-			ZONE0_OUT = 1;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 1;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 300){
-			ZONE0_OUT = 1;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 1;
-			ZONE2_OUT = 1;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 400){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 1;
-			ZONE2_OUT = 1;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 500){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 1;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 530){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else{
-			w_count = 0;
-		}
-	}
-	else if(zone0_en && zone1_en && !zone2_en && zone3_en){
-		if(w_count < 100){
-			ZONE0_OUT = 1;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 200){
-			ZONE0_OUT = 1;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 1;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 300){
-			ZONE0_OUT = 1;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 1;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 1;
-			w_count++;
-		}
-		else if(w_count < 400){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 1;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 1;
-			w_count++;
-		}
-		else if(w_count < 500){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 1;
-			w_count++;
-		}
-		else if(w_count < 530){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else{
-			w_count = 0;
-		}
-	}
-	else if(zone0_en && !zone1_en && zone2_en && zone3_en){
-		if(w_count < 100){
-			ZONE0_OUT = 1;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 200){
-			ZONE0_OUT = 1;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 1;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 300){
-			ZONE0_OUT = 1;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 1;
-			ZONE3_OUT = 1;
-			w_count++;
-		}
-		else if(w_count < 400){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 1;
-			ZONE3_OUT = 1;
-			w_count++;
-		}
-		else if(w_count < 500){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 1;
-			w_count++;
-		}
-		else if(w_count < 530){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else{
-			w_count = 0;
-		}
-	}
-	else if(!zone0_en && zone1_en && zone2_en && zone3_en){
-		if(w_count < 100){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 1;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 200){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 1;
-			ZONE2_OUT = 1;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 300){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 1;
-			ZONE2_OUT = 1;
-			ZONE3_OUT = 1;
-			w_count++;
-		}
-		else if(w_count < 400){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 1;
-			ZONE3_OUT = 1;
-			w_count++;
-		}
-		else if(w_count < 500){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 1;
-			w_count++;
-		}
-		else if(w_count < 530){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else{
-			w_count = 0;
-		}
-	}
-	else if(zone0_en && zone1_en && zone2_en && zone3_en){
-		if(w_count < 100){
-			ZONE0_OUT = 1;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 200){
-			ZONE0_OUT = 1;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 1;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 300){
-			ZONE0_OUT = 1;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 1;
-			ZONE2_OUT = 1;
-			ZONE3_OUT = 0;
-			w_count++;
-		}
-		else if(w_count < 400){
-			ZONE0_OUT = 1;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 1;
-			ZONE2_OUT = 1;
-			ZONE3_OUT = 1;
-			w_count++;
-		}
-		else if(w_count < 500){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 1;
-			ZONE2_OUT = 1;
-			ZONE3_OUT = 1;
-			w_count++;
-		}
-		else if(w_count < 600){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 1;
-			ZONE3_OUT = 1;
-			w_count++;
-		}
-		else if(w_count < 700){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 1;
-			w_count++;
-		}
-		else if(w_count < 730){
-			ZONE0_OUT = 0;
-			LUM_HOLD_PIN = 1;
-			ZONE1_OUT = 0;
-			ZONE2_OUT = 0;
-			ZONE3_OUT = 0;
-			w_count++;
-		}		
-		else{
-			w_count = 0;
-		}
-	}
-	else{
-		ZONE0_OUT = 0;
-		LUM_HOLD_PIN = 0;
-		ZONE1_OUT = 0;
-		ZONE2_OUT = 0;
-		ZONE3_OUT = 0;
-	}
-}
-
-void pulse(){	
-    if(heat_en){
-        HEAT_OUT = 1;
-    }
-    else{
-        HEAT_OUT = 0;
-    }
-	if(zone0_en && !zone1_en && !zone2_en && !zone3_en){
-		if(z_count < 10){
-			if(p_count < 20){
-				ZONE0_OUT = 1;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else{
-			z_count = 0;
-		}
-	}
-	else if(!zone0_en && zone1_en && !zone2_en && !zone3_en){
-		if(z_count < 10){
-			if(p_count < 20){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 1;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else{
-			z_count = 0;
-		}
-	}
-	else if(!zone0_en && !zone1_en && zone2_en && !zone3_en){
-		if(z_count < 10){
-			if(p_count < 20){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 1;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else{
-			z_count = 0;
-		}
-	}
-	else if(!zone0_en && !zone1_en && !zone2_en && zone3_en){
-		if(z_count < 10){
-			if(p_count < 20){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 1;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else{
-			z_count = 0;
-		}
-	}
-	else if(zone0_en && zone1_en && !zone2_en && !zone3_en){
-		if(z_count < 10){
-			if(p_count < 20){
-				ZONE0_OUT = 1;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else if(z_count < 20){
-			if(p_count < 20){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 1;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else{
-			z_count = 0;
-		}
-	}
-	else if(zone0_en && !zone1_en && zone2_en && !zone3_en){
-		if(z_count < 10){
-			if(p_count < 20){
-				ZONE0_OUT = 1;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else if(z_count < 20){
-			if(p_count < 20){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 1;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else{
-			z_count = 0;
-		}
-	}
-	else if(zone0_en && !zone1_en && !zone2_en && zone3_en){
-		if(z_count < 10){
-			if(p_count < 20){
-				ZONE0_OUT = 1;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else if(z_count < 20){
-			if(p_count < 20){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 1;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else{
-			z_count = 0;
-		}
-	}
-	else if(!zone0_en && zone1_en && zone2_en && !zone3_en){
-		if(z_count < 10){
-			if(p_count < 20){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 1;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else if(z_count < 20){
-			if(p_count < 20){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 1;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else{
-			z_count = 0;
-		}
-	}
-	else if(!zone0_en && zone1_en && !zone2_en && zone3_en){
-		if(z_count < 10){
-			if(p_count < 20){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 1;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else if(z_count < 20){
-			if(p_count < 20){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 1;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else{
-			z_count = 0;
-		}
-	}
-	else if(!zone0_en && !zone1_en && zone2_en && zone3_en){
-		if(z_count < 10){
-			if(p_count < 20){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 1;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else if(z_count < 20){
-			if(p_count < 20){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 1;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else{
-			z_count = 0;
-		}
-	}
-	else if(zone0_en && zone1_en && zone2_en && !zone3_en){
-		if(z_count < 10){
-			if(p_count < 20){
-				ZONE0_OUT = 1;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else if(z_count < 20){
-			if(p_count < 20){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 1;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else if(z_count < 30){
-			if(p_count < 20){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 1;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else{
-			z_count = 0;
-		}
-	}
-	else if(zone0_en && zone1_en && !zone2_en && zone3_en){
-		if(z_count < 10){
-			if(p_count < 20){
-				ZONE0_OUT = 1;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else if(z_count < 20){
-			if(p_count < 20){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 1;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else if(z_count < 30){
-			if(p_count < 20){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 1;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else{
-			z_count = 0;
-		}
-	}
-	else if(zone0_en && !zone1_en && zone2_en && zone3_en){
-		if(z_count < 10){
-			if(p_count < 20){
-				ZONE0_OUT = 1;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else if(z_count < 20){
-			if(p_count < 20){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 1;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else if(z_count < 30){
-			if(p_count < 20){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 1;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else{
-			z_count = 0;
-		}
-	}
-	else if(!zone0_en && zone1_en && zone2_en && zone3_en){
-		if(z_count < 10){
-			if(p_count < 20){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 1;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else if(z_count < 20){
-			if(p_count < 20){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 1;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else if(z_count < 30){
-			if(p_count < 20){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 1;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else{
-			z_count = 0;
-		}
-	}
-	else if(zone0_en && zone1_en && zone2_en && zone3_en){
-		if(z_count < 10){
-			if(p_count < 20){
-				ZONE0_OUT = 1;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else if(z_count < 20){
-			if(p_count < 20){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 1;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else if(z_count < 30){
-			if(p_count < 20){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 1;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else if(z_count < 40){
-			if(p_count < 20){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 1;
-				p_count++;
-			}
-			else if(p_count < 30){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				p_count++;
-			}
-			else{
-				p_count = 0;
-				z_count++;
-			}
-		}
-		else{
-			z_count = 0;
-		}
-	}	
-	else{
-		ZONE0_OUT = 0;
-		LUM_HOLD_PIN = 0;
-		ZONE1_OUT = 0;
-		ZONE2_OUT = 0;
-		ZONE3_OUT = 0;
-	}
-	//return;
-}
-
-void alternate(){	
-	if(heat_en){
-        HEAT_OUT = 1;
-    }
-    else{
-        HEAT_OUT = 0;
-    }
-		if(zone0_en && zone1_en && zone2_en && zone3_en){
-			if(a_count < 100){
-				ZONE0_OUT = 1;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 1;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				a_count++;
-			}
-			else if(a_count < 200){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 1;
-				ZONE3_OUT = 1;
-				a_count++;
-			}
-			else{
-				a_count = 0;
-			}
-		}
-		else if(zone0_en && zone1_en && zone2_en && !zone3_en){
-			if(a_count < 100){
-				ZONE0_OUT = 1;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 1;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				a_count++;
-			}
-			else if(a_count < 200){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 1;
-				ZONE3_OUT = 0;
-				a_count++;
-			}
-			else{
-				a_count = 0;
-			}
-		}
-		else if(zone0_en && zone1_en && zone3_en && !zone2_en){
-			if(a_count < 100){
-				ZONE0_OUT = 1;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 1;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				a_count++;
-			}
-			else if(a_count < 200){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 1;
-				a_count++;
-			}
-			else{
-				a_count = 0;
-			}
-		}
-        else if(zone1_en && zone2_en && zone3_en && !zone0_en){
-			if(a_count < 100){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 1;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				a_count++;
-			}
-			else if(a_count < 200){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 1;
-				ZONE3_OUT = 1;
-				a_count++;
-			}
-			else{
-				a_count = 0;
-			}
-		}
-		else if(zone0_en && zone2_en && zone3_en && !zone1_en){
-			if(a_count < 100){
-				ZONE0_OUT = 1;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				a_count++;
-			}
-			else if(a_count < 200){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 1;
-				ZONE3_OUT = 1;
-				a_count++;
-			}
-			else{
-				a_count = 0;
-			}
-		}
-		else if(zone0_en && zone1_en && !zone2_en && !zone3_en){
-			if(a_count < 100){
-				ZONE0_OUT = 1;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				a_count++;
-			}
-			else if(a_count < 200){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 1;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				a_count++;
-			}
-			else{
-				a_count = 0;
-			}
-		}
-		else if(zone0_en && zone2_en && !zone1_en && !zone3_en){
-			if(a_count < 100){
-				ZONE0_OUT = 1;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				a_count++;
-			}
-			else if(a_count < 200){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 1;
-				ZONE3_OUT = 0;
-				a_count++;
-			}
-			else{
-				a_count = 0;
-			}
-		}
-		else if(zone0_en && zone3_en && !zone1_en && !zone2_en){
-			if(a_count < 100){
-				ZONE0_OUT = 1;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				a_count++;
-			}
-			else if(a_count < 200){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 1;
-				a_count++;
-			}
-			else{
-				a_count = 0;
-			}
-		}
-		else if(zone1_en && zone2_en && !zone0_en && !zone3_en){
-			if(a_count < 100){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 1;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				a_count++;
-			}
-			else if(a_count < 200){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 1;
-				ZONE3_OUT = 0;
-				a_count++;
-			}
-			else{
-				a_count = 0;
-			}
-		}
-		else if(zone1_en && zone3_en && !zone0_en && !zone2_en){
-			if(a_count < 100){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 1;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				a_count++;
-			}
-			else if(a_count < 200){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 1;
-				a_count++;
-			}
-			else{
-				a_count = 0;
-			}
-		}
-		else if(zone2_en && zone3_en && !zone0_en && !zone1_en){
-			if(a_count < 100){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 1;
-				ZONE3_OUT = 0;
-				a_count++;
-			}
-			else if(a_count < 200){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 1;
-				a_count++;
-			}
-			else{
-				a_count = 0;
-			}
-		}
-		else if(zone0_en && !zone1_en && !zone2_en && !zone3_en){
-			if(a_count < 100){
-				ZONE0_OUT = 1;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				a_count++;
-			}
-			else if(a_count < 130){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				a_count++;
-			}
-			else{
-				a_count = 0;
-			}
-		}
-		else if(zone1_en && !zone0_en && !zone2_en && !zone3_en){
-			if(a_count < 100){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 1;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				a_count++;
-			}
-			else if(a_count < 130){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				a_count++;
-			}
-			else{
-				a_count = 0;
-			}
-		}
-		else if(zone2_en && !zone0_en && !zone1_en && !zone3_en){
-			if(a_count < 100){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 1;
-				ZONE3_OUT = 0;
-				a_count++;
-			}
-			else if(a_count < 130){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				a_count++;
-			}
-			else{
-				a_count = 0;
-			}
-		}
-		else if(zone3_en && !zone0_en && !zone1_en && !zone2_en){
-			if(a_count < 100){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 1;
-				a_count++;
-			}
-			else if(a_count < 130){
-				ZONE0_OUT = 0;
-				LUM_HOLD_PIN = 1;
-				ZONE1_OUT = 0;
-				ZONE2_OUT = 0;
-				ZONE3_OUT = 0;
-				a_count++;
-			}
-			else{
-				a_count = 0;
-			}
-		}
-	
-	else{
-		ZONE0_OUT = 0;
-		LUM_HOLD_PIN = 0;
-		ZONE1_OUT = 0;
-		ZONE2_OUT = 0;
-		ZONE3_OUT = 0;
-	}
-	//return;
 }
 
 void jct_massage_on(){
     power = true;
-	zone0_en = true;
-	zone1_en = true;
-	zone2_en = true;
-	zone3_en = true;
-	alt_en = true;
-	wav_en = false;
-	pul_en = false;
     m_flag = true;
 }
 
@@ -2430,21 +800,15 @@ void jct_massage_off(){
     power = false;
     m_flag = false;
 	MOTOR_PIN = 0;
-    LUM_HOLD_PIN = 0;
+    LUMBAR_INFLATE = 0;
+	LUMBAR_DEFLATE = 0;
+	ZONE1_OUT = 0;  
     ZONE0_OUT = 0;
-	LUM_HOLD_PIN = 0;
-	ZONE1_OUT = 0;
-	ZONE2_OUT = 0;
-	ZONE3_OUT = 0;    
+    massageCycleTimer = 0;
+    massageSecTimer = MASSAGE_SEC;
 }
 
 void jct_massage_reset(){
-    zone0_en = false;
-	zone1_en = false;
-	zone2_en = false;
-	zone3_en = false;
-	a_count = 0;
-	p_count = 0;
-	w_count = 0;
-	z_count = 0;
+    massageCycleTimer = 0;
+    massageSecTimer = MASSAGE_SEC;
 }

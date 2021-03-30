@@ -1108,8 +1108,8 @@
 [s S2957 . 1 `uc 1 TOSH 1 0 :7:0 
 ]
 [u S2959 . 1 `S2957 1 . 1 0 ]
-"600 L210004 JCT.c
-[v F2825 `(v  1 t 0 ]
+"545 L210004 JCT.c
+[v F2827 `(v  1 t 0 ]
 "5 C:\Program Files (x86)\HI-TECH Software\PICC\9.83\sources\abdiv.c
 [v ___abdiv `(c  1 e 1 0 ]
 "5 C:\Program Files (x86)\HI-TECH Software\PICC\9.83\sources\abmod.c
@@ -1210,29 +1210,25 @@
 [v ___fttoee `(f  1 e 3 0 ]
 "132
 [v ___fltoee `(d  1 e 3 0 ]
-"83 L210004 JCT.c
+"77 L210004 JCT.c
 [v _putch `(v  1 e 0 0 ]
-"99
+"93
 [v _getch `(uc  1 e 1 0 ]
-"116
+"110
 [v _getche `(uc  1 e 1 0 ]
-"236
+"228
 [v _main `(v  1 e 0 0 ]
-"600
+"545
 [v _isr `I(v  1 s 0 isr ]
-"691
-[v _wave `(v  1 e 0 0 ]
-"1294
-[v _pulse `(v  1 e 0 0 ]
-"2090
-[v _alternate `(v  1 e 0 0 ]
-"2423
+"606
+[v _massage `(v  1 e 0 0 ]
+"796
 [v _jct_massage_on `(v  1 e 0 0 ]
-"2435
+"801
 [v _jct_massage_off `(v  1 e 0 0 ]
 [v i1_jct_massage_off `(v  1 e 0 0 ]
 [v i1_jct_massage_off `(v  1 e 0 0 ]
-"2447
+"815
 [v _jct_massage_reset `(v  1 e 0 0 ]
 [v i1_jct_massage_reset `(v  1 e 0 0 ]
 [v i1_jct_massage_reset `(v  1 e 0 0 ]
@@ -3044,133 +3040,125 @@
 [v _STKPTRbits `VES2930  1 e 1 @4077 ]
 "3157
 [v _TOSHbits `VES83  1 e 1 @4079 ]
-"195 L210004 JCT.c
+"190 L210004 JCT.c
 [v _w_count `VEi  1 e 2 0 ]
-"196
+"191
 [v _a_count `VEi  1 e 2 0 ]
-"197
+"192
 [v _p_count `VEi  1 e 2 0 ]
-"198
+"193
 [v _z_count `VEi  1 e 2 0 ]
-"200
-[v _zone0_en `VEuc  1 e 1 0 ]
-"201
-[v _zone1_en `VEuc  1 e 1 0 ]
-"202
-[v _zone2_en `VEuc  1 e 1 0 ]
-"203
-[v _zone3_en `VEuc  1 e 1 0 ]
-"204
-[v _alt_en `VEuc  1 e 1 0 ]
-"205
-[v _wav_en `VEuc  1 e 1 0 ]
-"206
-[v _pul_en `VEuc  1 e 1 0 ]
-"207
+"195
 [v _vent_t `VEuc  1 e 1 0 ]
-"208
+"196
 [v _m_flag `VEuc  1 e 1 0 ]
-"210
+"198
 [v _time_out `VEi  1 e 2 0 ]
-"211
+"199
 [v _comm_timeout `VEi  1 e 2 0 ]
-"212
-[v _massage_timeout `VEi  1 e 2 0 ]
-"213
+"200
 [v _heat_timeout `VEi  1 e 2 0 ]
-"214
+"201
 [v _TimerReload `VEi  1 e 2 0 ]
-"215
+"202
 [v _pwm_count `VEi  1 e 2 0 ]
-"216
+"203
 [v _vent_c `VEi  1 e 2 0 ]
-"217
+"204
 [v _rc_error `VEuc  1 e 1 0 ]
-"218
+"205
 [v _rc `VEuc  1 e 1 0 ]
-"219
+"206
 [v _last_rc `VE[5]uc  1 e 5 0 ]
-"220
+"207
 [v _tx_char `VE[5]uc  1 e 5 0 ]
-"221
+"208
 [v _heat_en `VEuc  1 e 1 0 ]
-"222
+"209
 [v _heat_reset `VEuc  1 e 1 0 ]
-"223
+"210
 [v _power `VEuc  1 e 1 0 ]
-"224
+"211
 [v _timer `VEuc  1 e 1 0 ]
-"236
+"212
+[v _pulsePhase `VEuc  1 e 1 0 ]
+"213
+[v _prOpen `VEuc  1 e 1 0 ]
+[v _prClose `VEuc  1 e 1 0 ]
+[v _hrOpen `VEuc  1 e 1 0 ]
+[v _hrClose `VEuc  1 e 1 0 ]
+"215
+[v _massageSecTimer `VEuc  1 e 1 0 ]
+"216
+[v _massageCycleTimer `VEuc  1 e 1 0 ]
+"217
+[v _massageCycles `VEuc  1 e 1 0 ]
+"218
+[v _prOpenDelay `VEuc  1 e 1 0 ]
+[v _prCloseDelay `VEuc  1 e 1 0 ]
+[v _hrOpenDelay `VEuc  1 e 1 0 ]
+[v _hrCloseDelay `VEuc  1 e 1 0 ]
+"228
 [v _main `(v  1 e 0 0 ]
 {
-"313
+"307
 [v main@i `ui  1 a 2 3 ]
-"328
-[v main@i_3032 `ui  1 a 2 5 ]
 "322
-[v main@i_3031 `ui  1 a 2 8 ]
-"304
+[v main@i_3028 `ui  1 a 2 5 ]
+"316
+[v main@i_3027 `ui  1 a 2 8 ]
+"298
 [v main@q `ui  1 a 2 1 ]
-"303
+"297
 [v main@c `uc  1 a 1 7 ]
-"301
+"295
 [v main@echo `uc  1 a 1 0 ]
-"598
+"543
 } 0
-"2447
+"815
 [v _jct_massage_reset `(v  1 e 0 0 ]
 {
-"2456
+"818
 } 0
-"2435
+"801
 [v _jct_massage_off `(v  1 e 0 0 ]
 {
-"2445
+"813
 } 0
-"2423
+"796
 [v _jct_massage_on `(v  1 e 0 0 ]
 {
-"2433
+"799
 } 0
-"99
+"93
 [v _getch `(uc  1 e 1 0 ]
 {
-"112
+"106
 } 0
-"83
+"77
 [v _putch `(v  1 e 0 0 ]
 {
 [v putch@byte `uc  1 a 1 wreg ]
 [v putch@byte `uc  1 a 1 wreg ]
-"96
+"90
 } 0
-"600
+"545
 [v _isr `I(v  1 s 0 isr ]
 {
-"689
+"604
 } 0
-"2447
+"606
+[v _massage `(v  1 e 0 0 ]
+{
+"794
+} 0
+"815
 [v i1_jct_massage_reset `(v  1 e 0 0 ]
 {
-"2456
+"818
 } 0
-"2435
+"801
 [v i1_jct_massage_off `(v  1 e 0 0 ]
 {
-"2445
-} 0
-"1294
-[v _pulse `(v  1 e 0 0 ]
-{
-"2088
-} 0
-"691
-[v _wave `(v  1 e 0 0 ]
-{
-"1292
-} 0
-"2090
-[v _alternate `(v  1 e 0 0 ]
-{
-"2421
+"813
 } 0

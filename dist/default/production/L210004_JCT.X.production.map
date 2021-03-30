@@ -24,7 +24,7 @@ Linker command line:
   -ACONFIG=08007h-08008h -pconfig=CONFIG -DCONFIG=2 -AIDLOC=08000h-08003h \
   -pidloc=IDLOC -DIDLOC=2 -AEEDATA=00h-0FFh/0F000h -peeprom_data=EEDATA \
   -DEEDATA=2 -DCODE=2 -DSTRCODE=2 -DSTRING=2 -DCONST=2 -DENTRY=2 -k \
-  C:\Users\dklepps\AppData\Local\Temp\sqds.obj \
+  C:\Users\dklepps\AppData\Local\Temp\so6g.obj \
   dist/default/production\L210004_JCT.X.production.obj 
 
 Object code version is 3.10
@@ -34,39 +34,31 @@ Machine type is 16F1933
 
 
                 Name                               Link     Load   Length Selector   Space Scale
-C:\Users\dklepps\AppData\Local\Temp\sqds.obj
-                end_init                             C4       C4        3        8       0
+C:\Users\dklepps\AppData\Local\Temp\so6g.obj
+                end_init                             84       84        3        8       0
                 reset_vec                             0        0        2        0       0
 dist/default/production\L210004_JCT.X.production.obj
-                intentry                              4        4       C0        8       0
+                intentry                              4        4       80        8       0
                 config                             8007     8007        2    1000E       0
-                text447                             BFB      BFB      1CB     17F6       0
-                text446                              C7       C7      308        8       0
-                text445                             DC6      DC6      23A     1B8C       0
-                text444                             667      667        B        8       0
-                text443                             659      659        E        8       0
-                cstackBANK0                          44       44        A       20       1
+                text333                             29E      29E       DF        8       0
+                cstackBANK0                          4A       4A        A       20       1
                 cstackCOMMON                         72       72        2       70       1
-                clrtext                             672      672        6        8       0
-                dataBANK0                            4E       4E        9       20       1
-                bssBANK0                             20       20       24       20       1
+                clrtext                             37D      37D        6        8       0
+                dataBANK0                            54       54        6       20       1
+                bssBANK0                             20       20       2A       20       1
                 bssCOMMON                            70       70        2       70       1
-                cinit                               3CF      3CF      28A        8       0
+                cinit                                87       87      217        8       0
 
 TOTAL           Name                               Link     Load   Length     Space
         CLASS   CONST          
 
         CLASS   CODE           
-                end_init                             C4       C4        3         0
-                intentry                              4        4       C0         0
+                end_init                             84       84        3         0
+                intentry                              4        4       80         0
                 reset_vec                             0        0        2         0
-                text447                             BFB      BFB      1CB         0
-                text446                              C7       C7      308         0
-                text445                             DC6      DC6      23A         0
-                text444                             667      667        B         0
-                text443                             659      659        E         0
-                clrtext                             672      672        6         0
-                cinit                               3CF      3CF      28A         0
+                text333                             29E      29E       DF         0
+                clrtext                             37D      37D        6         0
+                cinit                                87       87      217         0
 
         CLASS   STRCODE        
 
@@ -75,9 +67,9 @@ TOTAL           Name                               Link     Load   Length     Sp
         CLASS   STRING         
 
         CLASS   BANK0          
-                cstackBANK0                          44       44        A         1
-                dataBANK0                            4E       4E        9         1
-                bssBANK0                             20       20       24         1
+                cstackBANK0                          4A       4A        A         1
+                dataBANK0                            54       54        6         1
+                bssBANK0                             20       20       2A         1
 
         CLASS   BANK1          
 
@@ -228,31 +220,29 @@ TOTAL           Name                               Link     Load   Length     Sp
 SEGMENTS        Name                           Load    Length   Top    Selector   Space  Class     Delta
 
                 reset_vec                      000000  000002  000002         0       0  CODE        2
-                intentry                       000004  000674  000678         8       0  CODE        2
-                bssBANK0                       000020  000037  000057        20       1  BANK0       1
+                intentry                       000004  00037F  000383         8       0  CODE        2
+                bssBANK0                       000020  00003A  00005A        20       1  BANK0       1
                 bssCOMMON                      000070  000004  000074        70       1  COMMON      1
-                text447                        000BFB  0001CB  000DC6      17F6       0  CODE        2
-                text445                        000DC6  00023A  001000      1B8C       0  CODE        2
                 config                         008007  000002  008009     1000E       0  CONFIG      2
 
 
 UNUSED ADDRESS RANGES
 
         Name                Unused          Largest block    Delta
-        BANK0            00057-0006F              19           1
+        BANK0            0005A-0006F              16           1
         BANK1            000A0-000EF              50           1
         BANK2            00120-0016F              50           1
         BIGRAM           02000-020EF              F0           1
         CODE             00002-00003               2           2
-                         00678-00BFA             188
+                         00383-00FFF             47D
         COMMON           00074-0007D               A           1
         CONST            00002-00003               2           2
-                         00678-00BFA             100
+                         00383-00FFF             100
         EEDATA           0F000-0F0FF             100           2
         ENTRY            00002-00003               2           2
-                         00678-00BFA             100
+                         00383-00FFF             100
         IDLOC            08000-08003               4           2
-        RAM              00057-0006F              19           1
+        RAM              0005A-0006F              16           1
                          000A0-000EF              50
                          00120-0016F              50
         SFR0             00000-0001F              20           1
@@ -288,34 +278,30 @@ UNUSED ADDRESS RANGES
         SFR8             00400-0046F              70           1
         SFR9             00480-004EF              70           1
         STRCODE          00002-00003               2           2
-                         00678-00BFA             583
+                         00383-00FFF             C7D
         STRING           00002-00003               2           2
-                         00678-00BFA             100
+                         00383-00FFF             100
 
                                   Symbol Table
 
-??_alternate                  cstackCOMMON 00072
 ??_getch                      cstackCOMMON 00073
 ??_isr                        cstackCOMMON 00072
 ??_jct_massage_off            cstackCOMMON 00073
 ??_jct_massage_on             cstackCOMMON 00073
 ??_jct_massage_reset          cstackCOMMON 00073
 ??_main                       cstackCOMMON 00074
-??_pulse                      cstackCOMMON 00072
+??_massage                    cstackCOMMON 00072
 ??_putch                      cstackCOMMON 00073
-??_wave                       cstackCOMMON 00072
 ??i1_jct_massage_off          cstackCOMMON 00072
 ??i1_jct_massage_reset        cstackCOMMON 00072
-?_alternate                   cstackCOMMON 00072
 ?_getch                       cstackCOMMON 00072
 ?_isr                         cstackCOMMON 00072
 ?_jct_massage_off             cstackCOMMON 00072
 ?_jct_massage_on              cstackCOMMON 00072
 ?_jct_massage_reset           cstackCOMMON 00072
 ?_main                        cstackCOMMON 00072
-?_pulse                       cstackCOMMON 00072
+?_massage                     cstackCOMMON 00072
 ?_putch                       cstackCOMMON 00072
-?_wave                        cstackCOMMON 00072
 ?i1_jct_massage_off           cstackCOMMON 00072
 ?i1_jct_massage_reset         cstackCOMMON 00072
 _ANSELA                       (abs)        0018C
@@ -406,12 +392,12 @@ __HcstackBANK0                cstackBANK0  00000
 __HcstackCOMMON               cstackCOMMON 00000
 __HdataBANK0                  dataBANK0    00000
 __Heeprom_data                eeprom_data  00000
-__Hend_init                   end_init     000C7
+__Hend_init                   end_init     00087
 __Hfunctab                    functab      00000
 __HidataBANK0                 idataBANK0   00000
 __Hidloc                      idloc        00000
-__Hinit                       init         000C4
-__Hintentry                   intentry     000C4
+__Hinit                       init         00084
+__Hintentry                   intentry     00084
 __Hmaintext                   maintext     00000
 __Hpa_nodes                   pa_nodes     00000
 __Hpowerup                    powerup      00000
@@ -496,11 +482,11 @@ __LcstackBANK0                cstackBANK0  00000
 __LcstackCOMMON               cstackCOMMON 00000
 __LdataBANK0                  dataBANK0    00000
 __Leeprom_data                eeprom_data  00000
-__Lend_init                   end_init     000C4
+__Lend_init                   end_init     00084
 __Lfunctab                    functab      00000
 __LidataBANK0                 idataBANK0   00000
 __Lidloc                      idloc        00000
-__Linit                       init         000C4
+__Linit                       init         00084
 __Lintentry                   intentry     00004
 __Lmaintext                   maintext     00000
 __Lpa_nodes                   pa_nodes     00000
@@ -544,370 +530,253 @@ __Ltext                       text         00000
 __S0                          (abs)        08009
 __S1                          (abs)        00074
 __S2                          (abs)        00000
-__end_of_alternate            text447      00DB7
-__end_of_getch                cinit        0060B
-__end_of_isr                  intentry     000C4
-__end_of_jct_massage_off      cinit        00616
-__end_of_jct_massage_on       cinit        0063C
-__end_of_jct_massage_reset    cinit        00624
-__end_of_main                 cinit        00605
-__end_of_pulse                text445      00FEB
-__end_of_putch                cinit        0062B
-__end_of_wave                 text446      003C0
-__end_ofi1_jct_massage_off    text444      00672
-__end_ofi1_jct_massage_reset  text443      00667
+__end_of_getch                cinit        00265
+__end_of_isr                  intentry     00084
+__end_of_jct_massage_off      cinit        00275
+__end_of_jct_massage_on       cinit        00286
+__end_of_jct_massage_reset    cinit        00279
+__end_of_main                 cinit        0025F
+__end_of_massage              text333      0035E
+__end_of_putch                cinit        00280
+__end_ofi1_jct_massage_off    text333      0036D
+__end_ofi1_jct_massage_reset  text333      00371
 __pbssBANK0                   bssBANK0     00020
 __pbssCOMMON                  bssCOMMON    00070
-__pcstackBANK0                cstackBANK0  00044
+__pcstackBANK0                cstackBANK0  0004A
 __pcstackCOMMON               cstackCOMMON 00072
-__pdataBANK0                  dataBANK0    0004E
+__pdataBANK0                  dataBANK0    00054
 __pidataBANK0                 idataBANK0   00000
 __pintentry                   intentry     00004
-__pmaintext                   cinit        003E6
-__ptext437                    cinit        00616
-__ptext438                    cinit        0060B
-__ptext439                    cinit        0062B
-__ptext440                    cinit        00605
-__ptext441                    cinit        00624
-__ptext443                    text443      00659
-__ptext444                    text444      00667
-__ptext445                    text445      00DC6
-__ptext446                    text446      000C7
-__ptext447                    text447      00BFB
-__ptext448                    text448      00000
-__size_of_alternate           (abs)        00000
+__pmaintext                   cinit        0009C
+__ptext327                    cinit        00275
+__ptext328                    cinit        00265
+__ptext329                    cinit        00280
+__ptext330                    cinit        0025F
+__ptext331                    cinit        00279
+__ptext333                    text333      0029E
+__ptext334                    text333      0036D
+__ptext335                    text333      0035E
+__ptext336                    text336      00000
 __size_of_getch               (abs)        00000
 __size_of_isr                 (abs)        00000
 __size_of_jct_massage_off     (abs)        00000
 __size_of_jct_massage_on      (abs)        00000
 __size_of_jct_massage_reset   (abs)        00000
 __size_of_main                (abs)        00000
-__size_of_pulse               (abs)        00000
+__size_of_massage             (abs)        00000
 __size_of_putch               (abs)        00000
-__size_of_wave                (abs)        00000
 __size_ofi1_jct_massage_off   (abs)        00000
 __size_ofi1_jct_massage_reset (abs)        00000
 _a_count                      bssBANK0     0002C
-_alt_en                       dataBANK0    00052
-_alternate                    text447      00BFB
 _comm_timeout                 bssBANK0     0002E
-_exit                         init         000C4
-_getch                        cinit        00605
+_exit                         init         00084
+_getch                        cinit        0025F
 _heat_en                      bssBANK0     0003A
 _heat_reset                   bssBANK0     0003B
 _heat_timeout                 bssBANK0     00030
+_hrClose                      bssBANK0     0003C
+_hrCloseDelay                 bssBANK0     0003D
+_hrOpen                       bssBANK0     0003E
+_hrOpenDelay                  bssBANK0     0003F
 _isr                          intentry     00004
-_jct_massage_off              cinit        0060B
-_jct_massage_on               cinit        0062B
-_jct_massage_reset            cinit        00616
+_jct_massage_off              cinit        00265
+_jct_massage_on               cinit        00280
+_jct_massage_reset            cinit        00275
 _last_rc                      bssBANK0     00020
-_m_flag                       bssBANK0     0003C
-_main                         cinit        003E6
-_massage_timeout              bssBANK0     00032
-_p_count                      bssBANK0     00034
-_power                        bssBANK0     0003D
-_pul_en                       bssBANK0     0003E
-_pulse                        text445      00DC6
-_putch                        cinit        00624
-_pwm_count                    bssBANK0     00036
-_rc                           bssBANK0     0003F
-_rc_error                     bssBANK0     00040
-_time_out                     dataBANK0    0004E
-_timer                        bssBANK0     00041
+_m_flag                       bssBANK0     00040
+_main                         cinit        0009C
+_massage                      text333      0029E
+_massageCycleTimer            bssCOMMON    00070
+_massageCycles                bssBANK0     00041
+_massageSecTimer              dataBANK0    00058
+_p_count                      bssBANK0     00032
+_power                        bssBANK0     00042
+_prClose                      bssBANK0     00043
+_prCloseDelay                 bssBANK0     00044
+_prOpen                       bssBANK0     00045
+_prOpenDelay                  bssBANK0     00046
+_pulsePhase                   dataBANK0    00059
+_putch                        cinit        00279
+_pwm_count                    bssBANK0     00034
+_rc                           bssCOMMON    00071
+_rc_error                     bssBANK0     00047
+_time_out                     dataBANK0    00054
+_timer                        bssBANK0     00048
 _tx_char                      bssBANK0     00025
-_vent_c                       dataBANK0    00050
-_vent_t                       bssBANK0     00042
-_w_count                      bssCOMMON    00070
-_wav_en                       bssBANK0     00043
-_wave                         text446      000C7
+_vent_c                       dataBANK0    00056
+_vent_t                       bssBANK0     00049
+_w_count                      bssBANK0     00036
 _z_count                      bssBANK0     00038
-_zone0_en                     dataBANK0    00053
-_zone1_en                     dataBANK0    00054
-_zone2_en                     dataBANK0    00055
-_zone3_en                     dataBANK0    00056
 btemp                         (abs)        0007E
-clear_ram                     clrtext      00672
-end_of_initialization         cinit        003E4
-i1_jct_massage_off            text444      00667
-i1_jct_massage_reset          text443      00659
-i1l2489                                         
-i1l2492                                         
-i1l6741                                         
-i1l6745                                         
-i1l6751                                         
-i1l6755                                         
-i1l6757                                         
-i1l6759                                         
-i1l6765                                         
-i1l6771                                         
-i1l6775                                         
-i1l6777                                         
-i1l6779                                         
-i1l6785                                         
-i1l6793                                         
-i1l6797                                         
-i1l6801                                         
-i1l6811                                         
-i1l6817                                         
-i1l6821                                         
-i1l6825                                         
-i1l6829                                         
-i1l6831                                         
-i1l6835                                         
-i1l6837                                         
-i1l6839                                         
-i1l6841                                         
-i1l6857                                         
-i1l6859                                         
-i1l6861                                         
-i1l6879                                         
-i1l6881                                         
-i1l6883                                         
-i1l6901                                         
-i1l6903                                         
-i1l6905                                         
-i1l6923                                         
-i1l6925                                         
-i1l6927                                         
-i1l6945                                         
-i1l6947                                         
-i1l6967                                         
-i1l6969                                         
-i1l6989                                         
-i1l6991                                         
-i1l7011                                         
-i1l7013                                         
-i1l7033                                         
-i1l7035                                         
-i1l7055                                         
-i1l7057                                         
-i1l7077                                         
-i1l7099                                         
-i1l7121                                         
-i1l7143                                         
-i1l7163                                         
-i1l7165                                         
-i1l7169                                         
-i1l7193                                         
-i1l7217                                         
-i1l7241                                         
-i1l7257                                         
-i1l7259                                         
-i1l7291                                         
-i1l7295                                         
-i1l7325                                         
-i1l7331                                         
-i1l7361                                         
-i1l7363                                         
-i1l7395                                         
-i1l7399                                         
-i1l7431                                         
-i1l7433                                         
-i1l7461                                         
-i1l7463                                         
-i1l7465                                         
-i1l7507                                         
-i1l7509                                         
-i1l7513                                         
-i1l7553                                         
-i1l7557                                         
-i1l7559                                         
-i1l7601                                         
-i1l7603                                         
-i1l7605                                         
-i1l7645                                         
-i1l7647                                         
-i1l7649                                         
-i1l7651                                         
-i1l7701                                         
-i1l7703                                         
-i1l7707                                         
-i1l7729                                         
-i1l7737                                         
-i1l7767                                         
-i1l7797                                         
-i1l7819                                         
-i1l7821                                         
-i1l7865                                         
-i1l7869                                         
-i1l7911                                         
-i1l7917                                         
-i1l7959                                         
-i1l7961                                         
-i1l8005                                         
-i1l8009                                         
-i1l8053                                         
-i1l8055                                         
-i1l8095                                         
-i1l8097                                         
-i1l8099                                         
-i1l8159                                         
-i1l8161                                         
-i1l8165                                         
-i1l8223                                         
-i1l8227                                         
-i1l8229                                         
-i1l8289                                         
-i1l8291                                         
-i1l8293                                         
-i1l8351                                         
-i1l8353                                         
-i1l8355                                         
-i1l8357                                         
-i1l8431                                         
-i1l8433                                         
-i1l8435                                         
-i1l8437                                         
-i1l8439                                         
-i1l8441                                         
-i1l8443                                         
-i1l8445                                         
-i1l8447                                         
+clear_ram                     clrtext      0037D
+end_of_initialization         cinit        0009A
+i1_jct_massage_off            text333      0035E
+i1_jct_massage_reset          text333      0036D
+i1l2050                                         
+i1l2053                                         
+i1l4738                                         
+i1l4742                                         
+i1l4748                                         
+i1l4754                                         
+i1l4758                                         
+i1l4760                                         
+i1l4762                                         
+i1l4768                                         
+i1l4774                                         
+i1l4784                                         
+i1l4792                                         
+i1l4794                                         
+i1l4798                                         
+i1l4802                                         
+i1l4804                                         
+i1l4806                                         
+i1l4808                                         
+i1l4810                                         
+i1l4812                                         
+i1l4868                                         
+i1l4880                                         
+i1l4904                                         
+i1l4916                                         
+i1l4924                                         
+i1l4926                                         
+i1l4928                                         
+i1l4930                                         
+i1l4932                                         
+i1l4934                                         
+i1l4936                                         
+i1l4938                                         
+i1l4940                                         
+i1l4942                                         
+i1l4944                                         
 intlevel0                     functab      00000
 intlevel1                     functab      00000
 intlevel2                     functab      00000
 intlevel3                     functab      00000
 intlevel4                     functab      00000
 intlevel5                     functab      00000
-l1884                                           
-l1890                                           
-l2486                                           
-l2489                                           
-l2492                                           
-l8865                                           
-l8869                                           
-l8875                                           
-l8877                                           
-l8879                                           
-l8881                                           
-l8883                                           
-l8885                                           
-l8887                                           
-l8889                                           
-l8891                                           
-l8893                                           
-l8895                                           
-l8897                                           
-l8899                                           
-l8901                                           
-l8903                                           
-l8905                                           
-l8907                                           
-l8909                                           
-l8911                                           
-l8913                                           
-l8915                                           
-l8917                                           
-l8919                                           
-l8921                                           
-l8923                                           
-l8925                                           
-l8927                                           
-l8933                                           
-l8935                                           
-l8939                                           
-l8941                                           
-l8943                                           
-l8953                                           
-l8955                                           
-l8967                                           
-l8983                                           
-l8985                                           
-l8987                                           
-l8991                                           
-l9001                                           
-l9007                                           
-l9009                                           
-l9019                                           
-l9021                                           
-l9023                                           
-l9025                                           
-l9029                                           
-l9037                                           
-l9039                                           
-l9041                                           
-l9047                                           
-l9049                                           
-l9055                                           
-l9057                                           
-l9059                                           
-l9065                                           
-l9067                                           
-l9069                                           
-l9075                                           
-l9083                                           
-l9085                                           
-l9087                                           
-l9101                                           
-l9103                                           
-l9105                                           
-l9111                                           
-l9113                                           
-l9115                                           
-l9129                                           
-l9131                                           
-l9133                                           
-l9147                                           
-l9149                                           
-l9151                                           
-l9161                                           
-l9163                                           
-l9165                                           
-l9167                                           
-l9169                                           
-l9171                                           
-l9173                                           
-l9175                                           
-l9177                                           
-l9179                                           
-l9181                                           
-l9191                                           
-l9193                                           
-l9195                                           
-l9197                                           
-l9199                                           
-l9201                                           
-l9203                                           
-l9205                                           
-l9207                                           
-l9209                                           
-l9211                                           
-l9213                                           
-l9219                                           
-l9221                                           
-l9223                                           
-l9225                                           
-l9227                                           
-l9229                                           
-l9231                                           
-l9233                                           
-l9235                                           
-l9237                                           
-l9239                                           
-l9245                                           
-l9249                                           
-l9255                                           
-l9259                                           
-l9265                                           
-l9269                                           
-l9275                                           
-l9279                                           
-l9285                                           
-l9287                                           
-l9293                                           
-l9295                                           
-l9301                                           
-l9303                                           
-l9309                                           
-l9313                                           
-main@c                        cstackBANK0  0004B
-main@echo                     cstackBANK0  00044
-main@i                        cstackBANK0  00047
-main@i_3031                   cstackBANK0  0004C
-main@i_3032                   cstackBANK0  00049
-main@q                        cstackBANK0  00045
+l1888                                           
+l1894                                           
+l2047                                           
+l2050                                           
+l2053                                           
+l5294                                           
+l5298                                           
+l5304                                           
+l5306                                           
+l5308                                           
+l5310                                           
+l5312                                           
+l5314                                           
+l5316                                           
+l5318                                           
+l5320                                           
+l5322                                           
+l5324                                           
+l5326                                           
+l5328                                           
+l5330                                           
+l5332                                           
+l5334                                           
+l5336                                           
+l5338                                           
+l5340                                           
+l5342                                           
+l5344                                           
+l5346                                           
+l5348                                           
+l5350                                           
+l5352                                           
+l5354                                           
+l5356                                           
+l5362                                           
+l5364                                           
+l5368                                           
+l5370                                           
+l5372                                           
+l5382                                           
+l5384                                           
+l5396                                           
+l5412                                           
+l5414                                           
+l5416                                           
+l5420                                           
+l5430                                           
+l5436                                           
+l5438                                           
+l5448                                           
+l5450                                           
+l5452                                           
+l5454                                           
+l5458                                           
+l5466                                           
+l5468                                           
+l5470                                           
+l5476                                           
+l5482                                           
+l5484                                           
+l5486                                           
+l5492                                           
+l5494                                           
+l5496                                           
+l5502                                           
+l5510                                           
+l5512                                           
+l5514                                           
+l5528                                           
+l5530                                           
+l5532                                           
+l5538                                           
+l5540                                           
+l5542                                           
+l5556                                           
+l5558                                           
+l5560                                           
+l5574                                           
+l5576                                           
+l5578                                           
+l5588                                           
+l5590                                           
+l5592                                           
+l5594                                           
+l5596                                           
+l5598                                           
+l5600                                           
+l5602                                           
+l5604                                           
+l5606                                           
+l5608                                           
+l5618                                           
+l5620                                           
+l5622                                           
+l5624                                           
+l5626                                           
+l5628                                           
+l5630                                           
+l5632                                           
+l5634                                           
+l5636                                           
+l5638                                           
+l5644                                           
+l5646                                           
+l5648                                           
+l5650                                           
+l5652                                           
+l5654                                           
+l5656                                           
+l5658                                           
+l5660                                           
+l5662                                           
+l5664                                           
+l5670                                           
+l5674                                           
+main@c                        cstackBANK0  00051
+main@echo                     cstackBANK0  0004A
+main@i                        cstackBANK0  0004D
+main@i_3027                   cstackBANK0  00052
+main@i_3028                   cstackBANK0  0004F
+main@q                        cstackBANK0  0004B
 putch@byte                    cstackCOMMON 00073
 reset_vec                     reset_vec    00000
-start                         init         000C4
-start_initialization          cinit        003CF
+start                         init         00084
+start_initialization          cinit        00087
 wtemp0                        (abs)        0007E
